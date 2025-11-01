@@ -75,7 +75,7 @@ const tools = ref([
 <style scoped>
 .tools-section {
   padding: 80px 24px;
-  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
   background: linear-gradient(180deg, rgba(0, 13, 43, 0.5) 0%, rgba(0, 8, 24, 0.8) 100%);
 }

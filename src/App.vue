@@ -5,12 +5,13 @@
       <router-view></router-view>
     </v-main>
     <!-- <whatssAppContact /> -->
-    <!-- <siteFooter v-if="!isAnnaLinksPage" /> -->
+    <Footer />
   </v-app>
 </template>
 
 <script setup>
 import MenuNavigation from './components/MenuNavigation.vue'
+import Footer from './components/Footer.vue'
 </script>
 
 <style scoped></style>
