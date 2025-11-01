@@ -52,7 +52,7 @@
               Built with passion by<br />
               <strong>Arsen Cenollari</strong>
             </p>
-            <a href="#" class="coffee-button">
+            <a @click="sendToBuyMeACoffe" class="coffee-button">
               <v-icon size="20">mdi-coffee</v-icon>
               <span>Buy me a coffee</span>
             </a>
@@ -97,6 +97,10 @@ const tools = ref([
     link: '/youtube-downloader',
   },
 ])
+
+const sendToBuyMeACoffe = () => {
+  window.open('https://buymeacoffee.com/arsencenoln', '_blank')
+}
 </script>
 
 <style scoped>
@@ -203,6 +207,7 @@ const tools = ref([
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
   padding: 12px 24px;
   background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%);
   border: 1px solid rgba(255, 193, 7, 0.3);
