@@ -140,7 +140,7 @@ const tools = ref([
 .tool-card:hover {
   background: rgba(15, 23, 42, 0.9) !important;
   border-color: rgba(33, 150, 243, 0.4) !important;
-  transform: translateY(-8px);
+  transform: translateY(-8px) scale(1.05);
   box-shadow: 0 12px 40px rgba(33, 150, 243, 0.15);
 }
 
