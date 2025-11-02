@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/Index.vue'
 import PasswordGenerator from '@/views/PasswordGenerator.vue'
 import QrCodeGenerator from '@/views/QrCodeGenerator.vue'
+import ShorterUrlGenerator from '@/views/ShorterUrlGenerator.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,6 +21,11 @@ const router = createRouter({
       path: '/qr-code-generator',
       name: 'qr-code-generator',
       component: QrCodeGenerator,
+    },
+    {
+      path: '/shorten-url',
+      name: 'shorter-url',
+      component: ShorterUrlGenerator,
     },
   ],
 })
