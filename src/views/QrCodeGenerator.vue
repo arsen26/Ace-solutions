@@ -9,7 +9,7 @@
 
     <v-row justify="center" class="mb-10">
       <v-col cols="12" md="10" lg="8">
-        <v-card elevation="8" class="rounded-lg pa-6" color="#010a1b">
+        <v-card elevation="8" class="rounded-lg pa-6" color="#020c23">
           <v-row>
             <v-col cols="12" md="6" class="d-flex flex-column justify-center">
               <div class="input-section">
@@ -52,7 +52,6 @@
 
             <v-divider vertical class="d-none d-md-flex"></v-divider>
             <v-divider class="d-flex d-md-none my-4"></v-divider>
-
             <v-col cols="12" md="6" class="d-flex align-center justify-center">
               <div v-if="qrCode" class="qr-display">
                 <v-card elevation="4" class="pa-4 qr-card">

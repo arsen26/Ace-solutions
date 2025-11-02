@@ -126,7 +126,7 @@ const closeMenu = () => {
 .hamburger span {
   width: 25px;
   height: 3px;
-  background-color: #000000;
+  background-color: #ffffff;
   transition: all 0.3s ease;
   border-radius: 3px;
 }
@@ -146,7 +146,7 @@ const closeMenu = () => {
 .menu-mobile {
   display: none;
   flex-direction: column;
-  background-color: white;
+  background-color: rgba(var(--bg-rgb), 0.95);
   max-height: 0;
   align-items: center;
   overflow: hidden;
@@ -159,7 +159,7 @@ const closeMenu = () => {
 
 .menu-mobile a {
   text-decoration: none;
-  color: #000000;
+  color: white;
   font-weight: 500;
   padding: 12px 0;
   transition: all 0.3s ease;
