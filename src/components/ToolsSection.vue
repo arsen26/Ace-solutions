@@ -69,6 +69,12 @@ const tools = ref([
     description: 'Share files and folders securely via generated links',
     link: '/file-transfer',
   },
+  {
+    name: 'Password Generator',
+    icon: 'mdi-key-chain-variant',
+    description: 'Generate strong, random passwords to enhance your security',
+    link: '/password-generator',
+  },
 ])
 </script>
 

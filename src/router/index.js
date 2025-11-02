@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/Index.vue'
+import PasswordGenerator from '@/views/PasswordGenerator.vue'
+import QrCodeGenerator from '@/views/QrCodeGenerator.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,6 +10,16 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+    },
+    {
+      path: '/password-generator',
+      name: 'password-generator',
+      component: PasswordGenerator,
+    },
+    {
+      path: '/qr-code-generator',
+      name: 'qr-code-generator',
+      component: QrCodeGenerator,
     },
   ],
 })
