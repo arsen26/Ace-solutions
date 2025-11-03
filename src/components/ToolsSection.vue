@@ -49,7 +49,7 @@ const tools = ref([
     name: 'Instagram Downloader',
     icon: instagramIcon,
     description: 'Download videos and photos from Instagram with ease',
-    link: '/instagram-downloader',
+    link: '/instagram-video-downloader',
   },
   {
     name: 'YouTube Downloader',
