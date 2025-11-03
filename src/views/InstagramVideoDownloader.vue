@@ -56,7 +56,9 @@
                 <v-card elevation="4" class="pa-4 success-card">
                   <v-icon size="80" color="success" class="mb-4">mdi-check-circle</v-icon>
                   <h3 class="text-h5 mb-2">Video Ready!</h3>
-                  <p class="text-body-2 text-grey mb-4">Click the download button to save the video</p>
+                  <p class="text-body-2 text-grey mb-4">
+                    Click the download button to save the video
+                  </p>
                   <v-chip color="success" variant="outlined">
                     <v-icon left small>mdi-video</v-icon>
                     Video Available
@@ -106,15 +108,21 @@ const getVideoLink = async () => {
 }
 
 const downloadVideo = async () => {
+  isLoading.value = true
   try {
     const link = document.createElement('a')
-    link.href = videoExportPreviewLink.value
-    link.download = 'instagram-video.mp4'
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
+    const body = {
+      url: videoUrl.value,
+    }
+    link.href = await axios.post('http://localhost:3000/api/download', body).then((response) => {
+      // return window.URL.createObjectURL(new Blob([response.data]))
+    })
+    // link.download = 'instagram-video.mp4'
+    // link.click()
     document.body.removeChild(link)
+    isLoading.value = false
   } catch (error) {
+    isLoading.value = false
     console.error('Download error:', error)
     window.open(videoExportPreviewLink.value, '_blank')
   }

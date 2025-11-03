@@ -90,11 +90,11 @@ const tools = ref([
   },
   {
     name: 'Instagram Downloader',
-    link: '/instagram-downloader',
+    link: '/instagram-video-downloader',
   },
   {
     name: 'YouTube Downloader',
-    link: '/youtube-downloader',
+    link: '/youtube-video-downloader',
   },
 ])
 

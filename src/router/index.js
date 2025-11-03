@@ -4,6 +4,7 @@ import PasswordGenerator from '@/views/PasswordGenerator.vue'
 import QrCodeGenerator from '@/views/QrCodeGenerator.vue'
 import ShorterUrlGenerator from '@/views/ShorterUrlGenerator.vue'
 import InstagramVideoDownloader from '@/views/InstagramVideoDownloader.vue'
+import YoutubeVideoDownloader from '@/views/YoutubeVideoDownloader.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/instagram-video-downloader',
       name: 'instagram-video-downloader',
       component: InstagramVideoDownloader,
+    },
+    {
+      path: '/youtube-video-downloader',
+      name: 'youtube-video-downloader',
+      component: YoutubeVideoDownloader,
     },
   ],
 })

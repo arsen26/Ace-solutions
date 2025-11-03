@@ -55,7 +55,7 @@ const tools = ref([
     name: 'YouTube Downloader',
     icon: youtubeIcon,
     description: 'Save YouTube videos in various formats and qualities',
-    link: '/youtube-downloader',
+    link: '/youtube-video-downloader',
   },
   {
     name: 'Image Converter',
