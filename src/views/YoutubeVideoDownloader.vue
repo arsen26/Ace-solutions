@@ -2,7 +2,25 @@
   <div class="text-center mt-10 pt-10 pb-10 container-style fluid">
     <div v-if="isLoading" class="loading-container">
       <fingerprint-spinner :animation-duration="1500" :size="64" color="#bc36e0" />
+      <div class="progress-info mt-6">
+        <h3 class="text-h5 mb-4">{{ progressStatus }}</h3>
+        <div v-if="progressData.percent" class="progress-details">
+          <v-progress-linear
+            :model-value="parseProgress(progressData.percent)"
+            color="primary"
+            height="8"
+            rounded
+            class="mb-4"
+          ></v-progress-linear>
+          <div class="d-flex justify-space-between text-body-2">
+            <span>{{ progressData.percent }}</span>
+            <span v-if="progressData.speed">{{ progressData.speed }}</span>
+            <span v-if="progressData.eta">ETA: {{ progressData.eta }}</span>
+          </div>
+        </div>
+      </div>
     </div>
+
     <v-row class="mt-10 mb-10 justify-center">
       <v-col cols="12">
         <h1 class="text-h3 font-weight-bold mb-2">YouTube to MP3 Converter</h1>
@@ -11,6 +29,7 @@
         </p>
       </v-col>
     </v-row>
+
     <v-row justify="center" class="mb-10">
       <v-col cols="12" md="10" lg="8">
         <v-card elevation="8" class="rounded-lg pa-6" color="#020c23">
@@ -26,6 +45,8 @@
                   color="primary"
                   class="mb-4"
                   placeholder="https://www.youtube.com/watch?v=..."
+                  :error-messages="errorMessage"
+                  @keyup.enter="downloadAudio"
                 ></v-text-field>
                 <v-btn
                   class="generate-button-style"
@@ -36,18 +57,23 @@
                   :disabled="!videoUrl || isLoading"
                 >
                   <v-icon left class="mr-2">mdi-music-note</v-icon>
-                  Convert to MP3
+                  {{ isLoading ? 'Converting...' : 'Convert to MP3' }}
                 </v-btn>
               </div>
             </v-col>
+
             <v-divider vertical class="d-none d-md-flex"></v-divider>
             <v-divider class="d-flex d-md-none my-4"></v-divider>
+
             <v-col cols="12" md="6" class="d-flex align-center justify-center">
               <div v-if="downloadSuccess" class="qr-display">
                 <v-card elevation="4" class="pa-4 success-card">
                   <v-icon size="80" color="success" class="mb-4">mdi-check-circle</v-icon>
-                  <h3 class="text-h5 mb-2">Download Started!</h3>
-                  <p class="text-body-2 text-grey mb-4">Your MP3 file is being downloaded</p>
+                  <h3 class="text-h5 mb-2">Download Complete!</h3>
+                  <p class="text-body-2 text-grey mb-2">{{ successMessage }}</p>
+                  <p class="text-caption text-grey-lighten-1 mb-4">
+                    Saved to: {{ downloadFolder }}
+                  </p>
                   <v-chip color="success" variant="outlined">
                     <v-icon left small>mdi-music</v-icon>
                     Audio Ready
@@ -57,6 +83,9 @@
               <div v-else class="placeholder-section">
                 <v-icon size="100" color="grey-lighten-2">mdi-music-note-outline</v-icon>
                 <p class="text-grey mt-4">Enter YouTube URL to extract audio</p>
+                <p class="text-caption text-grey-darken-1 mt-2">
+                  Files will be saved to Downloads/YouTube Audio folder
+                </p>
               </div>
             </v-col>
           </v-row>
@@ -72,21 +101,21 @@
             <v-card class="feature-card pa-4" color="#020c23">
               <v-icon size="48" color="primary" class="mb-3">mdi-flash</v-icon>
               <h3 class="text-h6 mb-2">Fast Conversion</h3>
-              <p class="text-body-2 text-grey">MP3 extraction from any YouTube video</p>
+              <p class="text-body-2 text-grey">Quick MP3 extraction from any YouTube video</p>
             </v-card>
           </v-col>
           <v-col cols="12" sm="4">
             <v-card class="feature-card pa-4" color="#020c23">
               <v-icon size="48" color="success" class="mb-3">mdi-quality-high</v-icon>
               <h3 class="text-h6 mb-2">High Quality</h3>
-              <p class="text-body-2 text-grey">Best audio quality preservation</p>
+              <p class="text-body-2 text-grey">192kbps audio quality preservation</p>
             </v-card>
           </v-col>
           <v-col cols="12" sm="4">
             <v-card class="feature-card pa-4" color="#020c23">
-              <v-icon size="48" color="warning" class="mb-3">mdi-lock</v-icon>
-              <h3 class="text-h6 mb-2">Private & Safe</h3>
-              <p class="text-body-2 text-grey">Your data is never stored</p>
+              <v-icon size="48" color="warning" class="mb-3">mdi-folder-download</v-icon>
+              <h3 class="text-h6 mb-2">Auto Save</h3>
+              <p class="text-body-2 text-grey">Files saved to Downloads folder automatically</p>
             </v-card>
           </v-col>
         </v-row>
@@ -98,62 +127,163 @@
 <script setup>
 import { FingerprintSpinner } from 'epic-spinners'
 import { ref } from 'vue'
-import axios from 'axios'
 
 const videoUrl = ref('')
 const downloadSuccess = ref(false)
 const isLoading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+const downloadFolder = ref('')
+const progressStatus = ref('Initializing...')
+const progressData = ref({})
+
+const parseProgress = (percentStr) => {
+  const match = percentStr.match(/(\d+\.?\d*)/)
+  return match ? parseFloat(match[1]) : 0
+}
 
 const downloadAudio = async () => {
   if (!videoUrl.value) {
     return
   }
 
+  // Validate YouTube URL
+  const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/
+  if (!youtubeRegex.test(videoUrl.value)) {
+    errorMessage.value = 'Please enter a valid YouTube URL'
+    return
+  }
+
   isLoading.value = true
   downloadSuccess.value = false
+  errorMessage.value = ''
+  progressStatus.value = 'Initializing...'
+  progressData.value = {}
 
   try {
-    const response = await axios.post(
-      'http://localhost:3000/api/download-audio',
-      { url: videoUrl.value },
-      {
-        responseType: 'blob', // Important for binary data
+    const response = await fetch('http://localhost:3000/api/download-audio', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    )
+      body: JSON.stringify({ url: videoUrl.value }),
+    })
 
-    // Create a blob URL and trigger download
-    const blob = new Blob([response.data], { type: 'audio/mpeg' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
 
-    // Extract video title from URL or use default name
-    const filename = `youtube-audio-${Date.now()}.mp3`
-    link.download = filename
+    if (!response.body) {
+      throw new Error('ReadableStream not supported in this browser')
+    }
 
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
 
-    // Clean up the blob URL
-    window.URL.revokeObjectURL(url)
+    while (true) {
+      let done, value
+      try {
+        const result = await reader.read()
+        done = result.done
+        value = result.value
+      } catch (readError) {
+        console.error('Error reading stream:', readError)
+        break
+      }
 
-    downloadSuccess.value = true
+      if (done) {
+        console.log('Stream completed')
+        break
+      }
 
-    // Reset success message after 5 seconds
-    setTimeout(() => {
-      downloadSuccess.value = false
-    }, 5000)
+      // Decode the chunk and add to buffer
+      buffer += decoder.decode(value, { stream: true })
+
+      // Process complete lines
+      const lines = buffer.split('\n')
+      // Keep the last incomplete line in the buffer
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        line = line.trim()
+
+        // Skip empty lines and heartbeat
+        if (!line || line === ':heartbeat') {
+          continue
+        }
+
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.substring(6))
+            console.log('Received data:', data)
+
+            // Handle different message types
+            if (data.type === 'connected') {
+              console.log('Connected to server')
+              progressStatus.value = 'Preparing download...'
+            } else if (data.type === 'progress') {
+              // Update progress information
+              progressData.value = data.data
+
+              if (data.data.status === 'starting') {
+                progressStatus.value = data.data.message
+              } else if (data.data.status === 'downloading') {
+                progressStatus.value = 'Downloading audio...'
+              } else if (data.data.status === 'converting') {
+                progressStatus.value = data.data.message
+                progressData.value = {} // Clear progress bar during conversion
+              } else if (data.data.status === 'finished') {
+                progressStatus.value = data.data.message
+              } else if (data.data.status === 'info') {
+                progressStatus.value = data.data.message
+              }
+            } else if (data.type === 'complete') {
+              // Download completed successfully
+              downloadSuccess.value = true
+              successMessage.value = data.data.filename
+                ? `Saved as: ${data.data.filename}`
+                : 'Audio downloaded successfully!'
+              downloadFolder.value = data.data.folder || 'Downloads/YouTube Audio'
+              isLoading.value = false
+
+              // Reset after 10 seconds
+              setTimeout(() => {
+                downloadSuccess.value = false
+                videoUrl.value = ''
+                progressData.value = {}
+              }, 10000)
+            } else if (data.type === 'error') {
+              // Handle errors
+              errorMessage.value = data.data.error
+              console.error('Download error:', data.data.error)
+              isLoading.value = false
+
+              // Clear error after 8 seconds
+              setTimeout(() => {
+                errorMessage.value = ''
+              }, 8000)
+            }
+          } catch (parseError) {
+            console.error('Error parsing SSE data:', parseError, 'Line:', line)
+          }
+        }
+      }
+    }
   } catch (error) {
     console.error('Error downloading audio:', error)
-    alert('Failed to download audio. Please check the URL and try again.')
-  } finally {
+    errorMessage.value = `Failed to download audio: ${error.message}`
     isLoading.value = false
+
+    setTimeout(() => {
+      errorMessage.value = ''
+    }, 5000)
   }
 }
 </script>
 
 <style scoped>
+/* Your existing styles remain the same */
 .loading-container {
   position: fixed;
   top: 0;
@@ -161,16 +291,30 @@ const downloadAudio = async () => {
   width: 100vw;
   height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.9);
   z-index: 9999;
+}
+
+.progress-info {
+  background: rgba(2, 12, 35, 0.95);
+  padding: 30px;
+  border-radius: 16px;
+  min-width: 400px;
+  border: 1px solid rgba(188, 54, 224, 0.3);
+}
+
+.progress-details {
+  margin-top: 20px;
 }
 
 .container-style {
   background-color: #010a1b;
   justify-content: center;
   align-items: center;
+  min-height: 100vh;
 }
 
 .generate-button-style {
@@ -182,14 +326,15 @@ const downloadAudio = async () => {
   transition: all 0.3s ease;
 }
 
-.generate-button-style:hover {
+.generate-button-style:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
 }
 
 .generate-button-style:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   transform: none;
+  background: linear-gradient(135deg, #757575 0%, #616161 100%);
 }
 
 .qr-display {
@@ -199,10 +344,11 @@ const downloadAudio = async () => {
 }
 
 .success-card {
-  background: #1a1a1a;
-  border-radius: 12px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0d1117 100%);
+  border-radius: 16px;
   text-align: center;
   padding: 30px;
+  border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .placeholder-section {
@@ -218,11 +364,13 @@ const downloadAudio = async () => {
   text-align: center;
   transition: all 0.3s ease;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  height: 100%;
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 25px rgba(188, 54, 224, 0.3);
+  border-color: rgba(188, 54, 224, 0.5);
 }
 
 @keyframes fadeIn {
@@ -239,6 +387,11 @@ const downloadAudio = async () => {
 @media (max-width: 960px) {
   .text-h3 {
     font-size: 2rem !important;
+  }
+
+  .progress-info {
+    min-width: 90vw;
+    padding: 20px;
   }
 }
 </style>

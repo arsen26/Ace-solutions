@@ -5,6 +5,8 @@ import QrCodeGenerator from '@/views/QrCodeGenerator.vue'
 import ShorterUrlGenerator from '@/views/ShorterUrlGenerator.vue'
 import InstagramVideoDownloader from '@/views/InstagramVideoDownloader.vue'
 import YoutubeVideoDownloader from '@/views/YoutubeVideoDownloader.vue'
+import ImageConverter from '@/views/ImageConverter.vue'
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -39,6 +41,11 @@ const router = createRouter({
       name: 'youtube-video-downloader',
       component: YoutubeVideoDownloader,
     },
+    {
+      path: '/image-converter',
+      name: 'image-converter',
+      component: ImageConverter,
+    }
   ],
 })
 

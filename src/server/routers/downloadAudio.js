@@ -1,106 +1,203 @@
 import express from 'express'
+import { spawn } from 'child_process'
 import path from 'path'
-import fs from 'fs'
-import { getAudio } from '../utils/video.js'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const router = express.Router()
 
-router.post('/download-audio', async (req, res) => {
-  if (!req.body.url) {
-    return res.status(400).json({ error: 'URL is required' })
+router.post('/download-audio', (req, res) => {
+  const { url } = req.body
+
+  if (!url) {
+    return res.status(400).json({ error: 'Missing URL' })
   }
 
-  const tempDir = path.join(process.cwd(), 'temp')
-  const timestamp = Date.now()
-  const outputPath = path.join(tempDir, `audio_${timestamp}.mp3`)
+  // Validate YouTube URL
+  const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/
+  if (!youtubeRegex.test(url)) {
+    return res.status(400).json({ error: 'Invalid YouTube URL' })
+  }
 
-  try {
-    // Create temp directory if it doesn't exist
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true })
-    }
+  // Set headers for Server-Sent Events (SSE)
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
+  res.setHeader('Access-Control-Allow-Origin', '*')
 
-    console.log('Extracting audio from:', req.body.url)
-    const finalPath = await getAudio(req.body.url, outputPath)
+  // Send initial connection message
+  res.write(`data: ${JSON.stringify({ type: 'connected', data: { message: 'Connected' } })}\n\n`)
 
-    console.log('Checking for file at:', finalPath)
+  const pythonScript = path.join(__dirname, '..', 'utils', 'DownloadAudio.py')
 
-    // Wait a bit for file system to catch up
-    await new Promise(resolve => setTimeout(resolve, 500))
+  console.log(`Starting Python script with URL: ${url}`)
 
-    // Check if file exists
-    if (!fs.existsSync(finalPath)) {
-      // Try to find any mp3 file in temp directory with similar timestamp
-      const files = fs.readdirSync(tempDir)
-      const mp3File = files.find(f => f.startsWith(`audio_${timestamp}`) && f.endsWith('.mp3'))
+  const childProcess = spawn('python', [pythonScript, url])
 
-      if (mp3File) {
-        const foundPath = path.join(tempDir, mp3File)
-        console.log('Found audio file at:', foundPath)
+  let outputData = ''
+  let errorData = ''
+  let clientDisconnected = false
 
-        // Set headers for download
-        res.setHeader('Content-Type', 'audio/mpeg')
-        res.setHeader('Content-Disposition', 'attachment; filename="youtube-audio.mp3"')
-
-        // Stream the file to response
-        const fileStream = fs.createReadStream(foundPath)
-        fileStream.pipe(res)
-
-        // Clean up the file after streaming
-        fileStream.on('end', () => {
-          fs.unlink(foundPath, (err) => {
-            if (err) console.error('Error deleting temp file:', err)
-            else console.log('Temp file deleted:', foundPath)
-          })
-        })
-
-        return
+  // Heartbeat to keep connection alive
+  const heartbeat = setInterval(() => {
+    if (!clientDisconnected && !res.writableEnded) {
+      try {
+        res.write(`:heartbeat\n\n`)
+      } catch (error) {
+        console.log('Client disconnected during heartbeat')
+        clearInterval(heartbeat)
       }
-
-      throw new Error('Audio file was not created')
     }
+  }, 15000)
 
-    console.log('Audio file created:', finalPath)
+  // Listen to child process stdout
+  childProcess.stdout.on('data', (data) => {
+    if (clientDisconnected) return
 
-    // Set headers for download
-    res.setHeader('Content-Type', 'audio/mpeg')
-    res.setHeader('Content-Disposition', 'attachment; filename="youtube-audio.mp3"')
+    const output = data.toString()
+    console.log(`Python stdout: ${output}`)
+    outputData += output
 
-    // Stream the file to response
-    const fileStream = fs.createReadStream(finalPath)
-    fileStream.pipe(res)
-
-    // Clean up the file after streaming
-    fileStream.on('end', () => {
-      fs.unlink(finalPath, (err) => {
-        if (err) console.error('Error deleting temp file:', err)
-        else console.log('Temp file deleted:', finalPath)
-      })
-    })
-  } catch (error) {
-    console.error('Audio download error:', error.message)
-
-    // Clean up any temp files
-    try {
-      const files = fs.readdirSync(tempDir)
-      const tempFiles = files.filter(f => f.startsWith(`audio_${timestamp}`))
-      tempFiles.forEach(file => {
-        const filePath = path.join(tempDir, file)
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath)
-          console.log('Cleaned up temp file:', filePath)
+    // Parse and send progress updates
+    const lines = output.split('\n')
+    lines.forEach((line) => {
+      const trimmedLine = line.trim()
+      if (trimmedLine.startsWith('PROGRESS:')) {
+        const progressJson = trimmedLine.substring('PROGRESS:'.length)
+        try {
+          const progressData = JSON.parse(progressJson)
+          if (!clientDisconnected && !res.writableEnded) {
+            res.write(`data: ${JSON.stringify({ type: 'progress', data: progressData })}\n\n`)
+          }
+        } catch (e) {
+          console.error('Error parsing progress:', e, 'Raw data:', progressJson)
         }
-      })
-    } catch (cleanupError) {
-      console.error('Cleanup error:', cleanupError)
+      } else if (trimmedLine.startsWith('SUCCESS:')) {
+        const successJson = trimmedLine.substring('SUCCESS:'.length)
+        try {
+          const successData = JSON.parse(successJson)
+          if (!clientDisconnected && !res.writableEnded) {
+            res.write(
+              `data: ${JSON.stringify({
+                type: 'complete',
+                data: {
+                  success: true,
+                  message: 'Audio downloaded successfully!',
+                  filename: successData.filename,
+                  folder: successData.folder,
+                },
+              })}\n\n`,
+            )
+          }
+        } catch (e) {
+          console.error('Error parsing success:', e)
+        }
+      }
+    })
+  })
+
+  // Listen to child process stderr
+  childProcess.stderr.on('data', (data) => {
+    if (clientDisconnected) return
+
+    const error = data.toString()
+    console.error(`Python stderr: ${error}`)
+    errorData += error
+
+    // Check for ERROR: prefix in stderr
+    const lines = error.split('\n')
+    lines.forEach((line) => {
+      const trimmedLine = line.trim()
+      if (trimmedLine.startsWith('ERROR:')) {
+        const errorJson = trimmedLine.substring('ERROR:'.length)
+        try {
+          const errorData = JSON.parse(errorJson)
+          if (!clientDisconnected && !res.writableEnded) {
+            res.write(
+              `data: ${JSON.stringify({
+                type: 'error',
+                data: { error: errorData.message || 'Download failed' },
+              })}\n\n`,
+            )
+          }
+        } catch (e) {
+          console.error('Error parsing error message:', e)
+          if (!clientDisconnected && !res.writableEnded) {
+            res.write(
+              `data: ${JSON.stringify({
+                type: 'error',
+                data: { error: trimmedLine },
+              })}\n\n`,
+            )
+          }
+        }
+      }
+    })
+  })
+
+  childProcess.on('close', (code) => {
+    console.log(`Python process exited with code: ${code}`)
+    console.log(`Output data: ${outputData}`)
+    console.log(`Error data: ${errorData}`)
+
+    clearInterval(heartbeat)
+
+    if (clientDisconnected || res.writableEnded) {
+      return
     }
 
-    if (!res.headersSent) {
-      res.status(500).json({
-        error: 'Failed to download audio. Make sure FFmpeg is installed.',
-      })
+    // If we get here without any SUCCESS or ERROR messages, send a generic error
+    if (code !== 0 && !outputData.includes('SUCCESS:') && !errorData.includes('ERROR:')) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'error',
+          data: { error: `Python script exited with code ${code}. Check server logs for details.` },
+        })}\n\n`,
+      )
     }
-  }
+
+    // End the response
+    setTimeout(() => {
+      if (!res.writableEnded) {
+        res.end()
+      }
+    }, 100)
+  })
+
+  childProcess.on('error', (error) => {
+    clearInterval(heartbeat)
+    console.error(`Failed to start Python process: ${error}`)
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'error',
+          data: {
+            error: 'Failed to start download process. Make sure Python and yt-dlp are installed.',
+          },
+        })}\n\n`,
+      )
+      res.end()
+    }
+  })
+
+  // Handle client disconnect
+  req.on('close', () => {
+    console.log('Client disconnected, cleaning up...')
+    clientDisconnected = true
+    clearInterval(heartbeat)
+
+    if (!childProcess.killed) {
+      console.log('Killing child process...')
+      childProcess.kill('SIGTERM')
+    }
+
+    if (!res.writableEnded) {
+      res.end()
+    }
+  })
 })
 
 export default router
