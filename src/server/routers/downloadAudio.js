@@ -8,8 +8,8 @@ const __dirname = path.dirname(__filename)
 
 const router = express.Router()
 
-router.post('/download-audio', (req, res) => {
-  const { url } = req.body
+router.get('/download-audio', (req, res) => {
+  const { url } = req.query
 
   if (!url) {
     return res.status(400).json({ error: 'Missing URL' })
@@ -35,7 +35,7 @@ router.post('/download-audio', (req, res) => {
 
   console.log(`Starting Python script with URL: ${url}`)
 
-  const childProcess = spawn('python', [pythonScript, url])
+  const childProcess = spawn('python', ['-u', pythonScript, url])
 
   let outputData = ''
   let errorData = ''
@@ -46,7 +46,7 @@ router.post('/download-audio', (req, res) => {
     if (!clientDisconnected && !res.writableEnded) {
       try {
         res.write(`:heartbeat\n\n`)
-      } catch (error) {
+      } catch (e) {
         console.log('Client disconnected during heartbeat')
         clearInterval(heartbeat)
       }

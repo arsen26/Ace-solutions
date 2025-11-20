@@ -58,6 +58,12 @@ const tools = ref([
     link: '/youtube-video-downloader',
   },
   {
+    name: 'YouTube MP4 Downloader',
+    icon: 'mdi-video',
+    description: 'Download YouTube videos as MP4 files',
+    link: '/youtube-mp4-downloader',
+  },
+  {
     name: 'Image Converter',
     icon: 'mdi-image-outline',
     description: 'Convert images between different formats (PNG, JPG, WEBP, etc.)',

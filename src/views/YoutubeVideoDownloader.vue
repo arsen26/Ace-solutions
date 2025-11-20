@@ -142,7 +142,7 @@ const parseProgress = (percentStr) => {
   return match ? parseFloat(match[1]) : 0
 }
 
-const downloadAudio = async () => {
+const downloadAudio = () => {
   if (!videoUrl.value) {
     return
   }
@@ -160,124 +160,68 @@ const downloadAudio = async () => {
   progressStatus.value = 'Initializing...'
   progressData.value = {}
 
-  try {
-    const response = await fetch('http://localhost:3000/api/download-audio', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ url: videoUrl.value }),
-    })
+  const eventSource = new EventSource(
+    `/api/download-audio?url=${encodeURIComponent(videoUrl.value)}`,
+  )
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      console.log('Received data:', data)
 
-    if (!response.body) {
-      throw new Error('ReadableStream not supported in this browser')
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      let done, value
-      try {
-        const result = await reader.read()
-        done = result.done
-        value = result.value
-      } catch (readError) {
-        console.error('Error reading stream:', readError)
-        break
-      }
-
-      if (done) {
-        console.log('Stream completed')
-        break
-      }
-
-      // Decode the chunk and add to buffer
-      buffer += decoder.decode(value, { stream: true })
-
-      // Process complete lines
-      const lines = buffer.split('\n')
-      // Keep the last incomplete line in the buffer
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        line = line.trim()
-
-        // Skip empty lines and heartbeat
-        if (!line || line === ':heartbeat') {
-          continue
+      if (data.type === 'connected') {
+        console.log('Connected to server')
+        progressStatus.value = 'Preparing download...'
+      } else if (data.type === 'progress') {
+        progressData.value = data.data
+        if (data.data.status === 'starting') {
+          progressStatus.value = data.data.message
+        } else if (data.data.status === 'downloading') {
+          progressStatus.value = 'Downloading audio...'
+        } else if (data.data.status === 'converting') {
+          progressStatus.value = data.data.message
+          progressData.value = {}
+        } else if (data.data.status === 'finished') {
+          progressStatus.value = data.data.message
+        } else if (data.data.status === 'info') {
+          progressStatus.value = data.data.message
         }
+      } else if (data.type === 'complete') {
+        downloadSuccess.value = true
+        successMessage.value = data.data.filename
+          ? `Saved as: ${data.data.filename}`
+          : 'Audio downloaded successfully!'
+        downloadFolder.value = data.data.folder || 'Downloads/YouTube Audio'
+        isLoading.value = false
+        eventSource.close()
 
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.substring(6))
-            console.log('Received data:', data)
+        setTimeout(() => {
+          downloadSuccess.value = false
+          videoUrl.value = ''
+          progressData.value = {}
+        }, 10000)
+      } else if (data.type === 'error') {
+        errorMessage.value = data.data.error
+        isLoading.value = false
+        eventSource.close()
 
-            // Handle different message types
-            if (data.type === 'connected') {
-              console.log('Connected to server')
-              progressStatus.value = 'Preparing download...'
-            } else if (data.type === 'progress') {
-              // Update progress information
-              progressData.value = data.data
-
-              if (data.data.status === 'starting') {
-                progressStatus.value = data.data.message
-              } else if (data.data.status === 'downloading') {
-                progressStatus.value = 'Downloading audio...'
-              } else if (data.data.status === 'converting') {
-                progressStatus.value = data.data.message
-                progressData.value = {} // Clear progress bar during conversion
-              } else if (data.data.status === 'finished') {
-                progressStatus.value = data.data.message
-              } else if (data.data.status === 'info') {
-                progressStatus.value = data.data.message
-              }
-            } else if (data.type === 'complete') {
-              // Download completed successfully
-              downloadSuccess.value = true
-              successMessage.value = data.data.filename
-                ? `Saved as: ${data.data.filename}`
-                : 'Audio downloaded successfully!'
-              downloadFolder.value = data.data.folder || 'Downloads/YouTube Audio'
-              isLoading.value = false
-
-              // Reset after 10 seconds
-              setTimeout(() => {
-                downloadSuccess.value = false
-                videoUrl.value = ''
-                progressData.value = {}
-              }, 10000)
-            } else if (data.type === 'error') {
-              // Handle errors
-              errorMessage.value = data.data.error
-              console.error('Download error:', data.data.error)
-              isLoading.value = false
-
-              // Clear error after 8 seconds
-              setTimeout(() => {
-                errorMessage.value = ''
-              }, 8000)
-            }
-          } catch (parseError) {
-            console.error('Error parsing SSE data:', parseError, 'Line:', line)
-          }
-        }
+        setTimeout(() => {
+          errorMessage.value = ''
+        }, 8000)
       }
+    } catch (e) {
+      console.error('Error parsing SSE data:', e)
     }
-  } catch (error) {
-    console.error('Error downloading audio:', error)
-    errorMessage.value = `Failed to download audio: ${error.message}`
-    isLoading.value = false
+  }
 
-    setTimeout(() => {
-      errorMessage.value = ''
-    }, 5000)
+  eventSource.onerror = (error) => {
+    console.error('EventSource error:', error)
+    // Only show error if we haven't completed successfully
+    if (!downloadSuccess.value) {
+      errorMessage.value = 'Connection lost. Please try again.'
+      isLoading.value = false
+    }
+    eventSource.close()
   }
 }
 </script>

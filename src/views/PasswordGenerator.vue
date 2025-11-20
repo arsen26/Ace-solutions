@@ -1,185 +1,174 @@
 <template>
-  <v-container class="pa-4" max-width="700">
-    <v-card elevation="2" class="pa-6">
-      <v-card-title class="text-h5 mb-4 pa-0">
-        <v-icon icon="mdi-lock-outline" class="mr-2"></v-icon>
-        Gjeneratori i Fjalëkalimeve
-      </v-card-title>
+  <div class="text-center mt-10 pt-10 pb-10 container-style fluid">
+    <v-row class="mt-10 mb-10 justify-center">
+      <v-col cols="12">
+        <h1 class="text-h3 font-weight-bold mb-2">Password Generator</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">
+          Generate strong, secure passwords instantly
+        </p>
+      </v-col>
+    </v-row>
 
-      <v-card-text class="pa-0">
-        <!-- Password Display -->
-        <v-text-field
-          v-model="password"
-          label="Password"
-          variant="outlined"
-          :append-inner-icon="show ? 'mdi-eye-off' : 'mdi-eye'"
-          @click:append-inner="show = !show"
-          :type="show ? 'text' : 'password'"
-          readonly
-          class="mb-4 password-field"
-          :class="strengthClass"
-        >
-          <template v-slot:prepend-inner>
-            <v-icon :icon="strengthIcon" :color="strengthColor"></v-icon>
-          </template>
-        </v-text-field>
-
-        <!-- Strength Indicator -->
-        <div v-if="password" class="mb-4">
-          <div class="d-flex justify-space-between align-center mb-2">
-            <span class="text-body-2">Forca e Fjalëkalimit:</span>
-            <v-chip :color="strengthColor" size="small" variant="flat">
-              {{ strengthLabel }}
-            </v-chip>
-          </div>
-          <v-progress-linear
-            :model-value="progress"
-            :color="strengthColor"
-            height="8"
-            rounded
-          ></v-progress-linear>
-
-          <!-- Feedback -->
-          <v-alert
-            v-if="feedback && (feedback.warning || feedback.suggestions?.length)"
-            type="info"
-            variant="tonal"
-            density="compact"
-            class="mt-3"
-          >
-            <div v-if="feedback.warning" class="text-body-2 mb-1">
-              <strong>Vërejtje:</strong> {{ feedback.warning }}
-            </div>
-            <ul v-if="feedback.suggestions?.length" class="text-body-2 mb-0 pl-4">
-              <li v-for="(s, i) in feedback.suggestions" :key="i">{{ s }}</li>
-            </ul>
-          </v-alert>
-        </div>
-
-        <v-divider class="my-4"></v-divider>
-
-        <!-- Options -->
-        <div class="mb-4">
+    <v-row justify="center" class="mb-10">
+      <v-col cols="12" md="10" lg="8">
+        <v-card elevation="8" class="rounded-lg pa-6" color="#020c23">
           <v-row>
-            <v-col cols="12" sm="6">
-              <v-slider
-                v-model="length"
-                :min="8"
-                :max="64"
-                :step="1"
-                thumb-label
-                label="Gjatësia"
-                color="primary"
-              >
-                <template v-slot:append>
-                  <v-text-field
-                    v-model.number="length"
-                    type="number"
-                    style="width: 70px"
-                    density="compact"
-                    variant="outlined"
-                    hide-details
+            <!-- Controls Section -->
+            <v-col cols="12" md="6" class="d-flex flex-column justify-center">
+              <div class="input-section">
+                <!-- Length Slider -->
+                <div class="mb-6">
+                  <div class="d-flex justify-space-between mb-2">
+                    <span class="text-grey-lighten-1">Password Length</span>
+                    <span class="text-primary font-weight-bold">{{ length }}</span>
+                  </div>
+                  <v-slider
+                    v-model="length"
                     :min="8"
                     :max="64"
-                  ></v-text-field>
-                </template>
-              </v-slider>
+                    :step="1"
+                    color="primary"
+                    hide-details
+                    track-color="grey-darken-3"
+                  ></v-slider>
+                </div>
+
+                <!-- Options -->
+                <div class="options-grid mb-6">
+                  <v-checkbox
+                    v-model="options.uppercase"
+                    label="Uppercase (A-Z)"
+                    density="compact"
+                    hide-details
+                    color="primary"
+                    class="text-grey-lighten-1"
+                  ></v-checkbox>
+                  <v-checkbox
+                    v-model="options.numbers"
+                    label="Numbers (0-9)"
+                    density="compact"
+                    hide-details
+                    color="primary"
+                    class="text-grey-lighten-1"
+                  ></v-checkbox>
+                  <v-checkbox
+                    v-model="options.symbols"
+                    label="Symbols (!@#$)"
+                    density="compact"
+                    hide-details
+                    color="primary"
+                    class="text-grey-lighten-1"
+                  ></v-checkbox>
+                </div>
+
+                <v-btn
+                  class="generate-button-style mb-4"
+                  size="large"
+                  block
+                  elevation="2"
+                  @click="generate"
+                >
+                  <v-icon left class="mr-2">mdi-refresh</v-icon>
+                  Generate Password
+                </v-btn>
+
+                <v-btn
+                  variant="outlined"
+                  class="passphrase-button-style"
+                  size="large"
+                  block
+                  @click="generatePassphrase"
+                >
+                  <v-icon left class="mr-2">mdi-text</v-icon>
+                  Generate Passphrase
+                </v-btn>
+              </div>
             </v-col>
 
-            <v-col cols="12" sm="6">
-              <div class="d-flex flex-column gap-2">
-                <v-checkbox
-                  v-model="options.numbers"
-                  label="Numra (0-9)"
-                  density="compact"
-                  hide-details
-                ></v-checkbox>
-                <v-checkbox
-                  v-model="options.symbols"
-                  label="Simbole (!@#$%)"
-                  density="compact"
-                  hide-details
-                ></v-checkbox>
-                <v-checkbox
-                  v-model="options.uppercase"
-                  label="Shkronja të Mëdha (A-Z)"
-                  density="compact"
-                  hide-details
-                ></v-checkbox>
+            <v-divider vertical class="d-none d-md-flex" color="grey-darken-3"></v-divider>
+            <v-divider class="d-flex d-md-none my-4" color="grey-darken-3"></v-divider>
+
+            <!-- Result Section -->
+            <v-col cols="12" md="6" class="d-flex align-center justify-center">
+              <div class="w-100">
+                <v-card class="result-card pa-4 mb-4" elevation="2">
+                  <v-text-field
+                    v-model="password"
+                    variant="plain"
+                    readonly
+                    hide-details
+                    class="password-display text-center text-h5"
+                    :type="show ? 'text' : 'password'"
+                  >
+                    <template v-slot:append-inner>
+                      <v-icon
+                        :icon="show ? 'mdi-eye-off' : 'mdi-eye'"
+                        @click="show = !show"
+                        color="grey"
+                        class="cursor-pointer"
+                      ></v-icon>
+                    </template>
+                  </v-text-field>
+                </v-card>
+
+                <!-- Strength Meter -->
+                <div v-if="password" class="mb-4">
+                  <div class="d-flex justify-space-between align-center mb-2">
+                    <span class="text-caption text-grey">Strength</span>
+                    <v-chip :color="strengthColor" size="x-small" variant="flat">
+                      {{ strengthLabel }}
+                    </v-chip>
+                  </div>
+                  <v-progress-linear
+                    :model-value="progress"
+                    :color="strengthColor"
+                    height="6"
+                    rounded
+                    bg-color="grey-darken-4"
+                  ></v-progress-linear>
+                </div>
+
+                <v-btn
+                  class="copy-button-style"
+                  size="large"
+                  block
+                  @click="copyToClipboard"
+                  :disabled="!password"
+                >
+                  <v-icon left class="mr-2">mdi-content-copy</v-icon>
+                  Copy to Clipboard
+                </v-btn>
               </div>
             </v-col>
           </v-row>
-        </div>
-
-        <!-- Action Buttons -->
-        <v-row>
-          <v-col>
-            <v-btn
-              color="primary"
-              @click="generate"
-              prepend-icon="mdi-refresh"
-              size="large"
-              block
-              class="mb-2"
-            >
-              Gjenero Password
-            </v-btn>
-          </v-col>
-        </v-row>
-
-        <v-row>
-          <v-col cols="12" sm="6">
-            <v-btn
-              variant="outlined"
-              @click="generatePassphrase"
-              prepend-icon="mdi-text"
-              block
-            >
-              Gjenero Passphrase
-            </v-btn>
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-btn
-              variant="outlined"
-              color="success"
-              @click="copyToClipboard"
-              :disabled="!password"
-              prepend-icon="mdi-content-copy"
-              block
-            >
-              Kopjo
-            </v-btn>
-          </v-col>
-        </v-row>
+        </v-card>
 
         <!-- Security Tips -->
-        <v-expansion-panels class="mt-4">
-          <v-expansion-panel>
-            <v-expansion-panel-title>
-              <v-icon icon="mdi-shield-check" class="mr-2"></v-icon>
-              Këshilla për Siguri
+        <v-expansion-panels class="mt-6" variant="popout">
+          <v-expansion-panel bg-color="#020c23" class="border-thin">
+            <v-expansion-panel-title class="text-grey-lighten-1">
+              <v-icon icon="mdi-shield-check" class="mr-2" color="primary"></v-icon>
+              Security Tips
             </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <ul class="text-body-2">
-                <li>Përdorni fjalëkalime të gjata (minimum 12 karaktere)</li>
-                <li>Kombinoni shkronja, numra dhe simbole</li>
-                <li>Mos ripërdorni fjalëkalimin në账户 të ndryshëm</li>
-                <li>Aktivizoni autentifikimin me dy faktorë kur është e mundur</li>
-                <li>Përdorni një menaxher fjalëkalimesh për të ruajtur fjalëkalimet tuaj</li>
-                <li>Ndërroni fjalëkalimet periodikisht, veçanërisht për账户 të rëndësishme</li>
+            <v-expansion-panel-text class="text-grey">
+              <ul class="pl-4">
+                <li class="mb-2">Use long passwords (minimum 12 characters)</li>
+                <li class="mb-2">Combine uppercase, numbers, and symbols</li>
+                <li class="mb-2">Don't reuse passwords across different accounts</li>
+                <li class="mb-2">Enable Two-Factor Authentication (2FA) whenever possible</li>
+                <li>Use a password manager to store your passwords securely</li>
               </ul>
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
-      </v-card-text>
-    </v-card>
+      </v-col>
+    </v-row>
 
-    <!-- Snackbar for copy notification -->
-    <v-snackbar v-model="snackbar" :timeout="2000" color="success">
+    <v-snackbar v-model="snackbar" color="success" :timeout="2000" location="top">
       <v-icon icon="mdi-check-circle" class="mr-2"></v-icon>
-      Fjalëkalimi u kopjua në clipboard!
+      Copied to clipboard!
     </v-snackbar>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -195,7 +184,6 @@ const snackbar = ref(false)
 
 // zxcvbn result
 const score = ref(0)
-const feedback = ref(null)
 
 // Character sets for password generation
 const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz'
@@ -248,22 +236,65 @@ const generate = () => {
   password.value = generateSecurePassword(length.value, options.value)
 }
 
-// Enhanced passphrase generation with larger wordlist
+// Enhanced passphrase generation
 const generatePassphrase = () => {
   const wordlist = [
-    'sun', 'river', 'mountain', 'coffee', 'digital', 'blue', 'stone', 'paper',
-    'light', 'green', 'star', 'ocean', 'forest', 'thunder', 'silver', 'golden',
-    'shadow', 'crystal', 'autumn', 'winter', 'spring', 'summer', 'phoenix',
-    'dragon', 'eagle', 'wolf', 'tiger', 'dolphin', 'falcon', 'hawk',
-    'maple', 'cedar', 'willow', 'birch', 'cherry', 'bamboo', 'lotus',
-    'ruby', 'amber', 'jade', 'pearl', 'coral', 'ivory', 'marble',
-    'canyon', 'valley', 'meadow', 'island', 'desert', 'glacier', 'volcano'
+    'sun',
+    'river',
+    'mountain',
+    'coffee',
+    'digital',
+    'blue',
+    'stone',
+    'paper',
+    'light',
+    'green',
+    'star',
+    'ocean',
+    'forest',
+    'thunder',
+    'silver',
+    'golden',
+    'shadow',
+    'crystal',
+    'autumn',
+    'winter',
+    'spring',
+    'summer',
+    'phoenix',
+    'dragon',
+    'eagle',
+    'wolf',
+    'tiger',
+    'dolphin',
+    'falcon',
+    'hawk',
+    'maple',
+    'cedar',
+    'willow',
+    'birch',
+    'cherry',
+    'bamboo',
+    'lotus',
+    'ruby',
+    'amber',
+    'jade',
+    'pearl',
+    'coral',
+    'ivory',
+    'marble',
+    'canyon',
+    'valley',
+    'meadow',
+    'island',
+    'desert',
+    'glacier',
+    'volcano',
   ]
 
   const parts = []
   const numWords = Math.max(4, Math.floor(length.value / 6))
 
-  // Use crypto.getRandomValues for better randomness
   const randomValues = new Uint32Array(numWords + 1)
   crypto.getRandomValues(randomValues)
 
@@ -272,7 +303,6 @@ const generatePassphrase = () => {
     parts.push(wordlist[randomIndex])
   }
 
-  // Add a random number for extra entropy
   const randomNum = randomValues[numWords] % 1000
   password.value = parts.join('-') + '-' + randomNum
 }
@@ -281,61 +311,55 @@ const generatePassphrase = () => {
 watch(password, (val) => {
   if (!val) {
     score.value = 0
-    feedback.value = null
     return
   }
   const r = zxcvbn(val)
   score.value = r.score
-  feedback.value = r.feedback
 })
 
 // Computed properties for strength visualization
 const strengthLabel = computed(() => {
   switch (score.value) {
-    case 0: return 'Shumë i Dobët'
-    case 1: return 'I Dobët'
-    case 2: return 'Moderuar'
-    case 3: return 'Mirë'
-    case 4: return 'Shumë i Fortë'
-    default: return '—'
+    case 0:
+      return 'Very Weak'
+    case 1:
+      return 'Weak'
+    case 2:
+      return 'Fair'
+    case 3:
+      return 'Good'
+    case 4:
+      return 'Strong'
+    default:
+      return '—'
   }
 })
 
 const strengthColor = computed(() => {
   switch (score.value) {
-    case 0: return 'error'
-    case 1: return 'warning'
-    case 2: return 'info'
-    case 3: return 'success'
-    case 4: return 'green-darken-2'
-    default: return 'grey'
+    case 0:
+      return 'error'
+    case 1:
+      return 'warning'
+    case 2:
+      return 'info'
+    case 3:
+      return 'success'
+    case 4:
+      return 'green-accent-3'
+    default:
+      return 'grey'
   }
-})
-
-const strengthIcon = computed(() => {
-  switch (score.value) {
-    case 0: return 'mdi-shield-off'
-    case 1: return 'mdi-shield-alert'
-    case 2: return 'mdi-shield-half-full'
-    case 3: return 'mdi-shield-check'
-    case 4: return 'mdi-shield-star'
-    default: return 'mdi-shield-outline'
-  }
-})
-
-const strengthClass = computed(() => {
-  return `strength-${score.value}`
 })
 
 const progress = computed(() => (score.value / 4) * 100)
 
-// Enhanced clipboard copy with fallback
 const copyToClipboard = async () => {
   try {
     await navigator.clipboard.writeText(password.value)
     snackbar.value = true
   } catch (e) {
-    // Fallback for older browsers
+    // Fallback
     const textArea = document.createElement('textarea')
     textArea.value = password.value
     textArea.style.position = 'fixed'
@@ -347,30 +371,88 @@ const copyToClipboard = async () => {
       snackbar.value = true
     } catch (err) {
       console.error('Failed to copy:', err)
-      alert('Nuk u arrit të kopjohet në clipboard')
     }
     document.body.removeChild(textArea)
   }
 }
 
-// Generate initial password on mount
 onMounted(() => {
   generate()
 })
 </script>
 
 <style scoped>
-.password-field {
-  font-family: 'Courier New', monospace;
-  font-size: 1.1em;
+.container-style {
+  background-color: #010a1b;
+  min-height: 100vh;
 }
 
-.password-field :deep(.v-field__input) {
+.input-section {
+  width: 100%;
+}
+
+.generate-button-style {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.generate-button-style:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4);
+}
+
+.passphrase-button-style {
+  color: #90caf9;
+  border-color: #90caf9;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.passphrase-button-style:hover {
+  background: rgba(144, 202, 249, 0.1);
+  transform: translateY(-2px);
+}
+
+.copy-button-style {
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+  color: white;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.copy-button-style:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.result-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.password-display :deep(.v-field__input) {
+  font-family: 'Courier New', monospace;
+  color: #ffffff;
   font-weight: 600;
   letter-spacing: 1px;
 }
 
-.gap-2 {
-  gap: 8px;
+.border-thin {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 960px) {
+  .text-h3 {
+    font-size: 2rem !important;
+  }
 }
 </style>

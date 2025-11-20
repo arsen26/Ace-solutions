@@ -7,7 +7,6 @@ import InstagramVideoDownloader from '@/views/InstagramVideoDownloader.vue'
 import YoutubeVideoDownloader from '@/views/YoutubeVideoDownloader.vue'
 import ImageConverter from '@/views/ImageConverter.vue'
 
-
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -45,7 +44,17 @@ const router = createRouter({
       path: '/image-converter',
       name: 'image-converter',
       component: ImageConverter,
-    }
+    },
+    {
+      path: '/youtube-mp4-downloader',
+      name: 'youtube-mp4-downloader',
+      component: () => import('@/views/YoutubeMp4Downloader.vue'),
+    },
+    {
+      path: '/file-transfer',
+      name: 'file-transfer',
+      component: () => import('@/views/FileShare.vue'),
+    },
   ],
 })
 
